@@ -46,6 +46,5 @@ prop_member_insert_delete() ->
             S0 = set_from_list(L),
             S1 = oa_set:insert(X, S0),
             S2 = oa_set:delete(X, S1),
-            %% после insert элемент есть, после delete – нет
             oa_set:member(X, S1) andalso not oa_set:member(X, S2)
         end).
