@@ -2,8 +2,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-%% Простейшие тесты API
-
 new_is_empty_test() ->
     S = oa_set:new(),
     ?assert(oa_set:is_empty(S)),
@@ -14,7 +12,6 @@ insert_member_test() ->
     S1 = oa_set:insert(1, S0),
     ?assert(oa_set:member(1, S1)),
     ?assertNot(oa_set:member(2, S1)),
-    %% иммутабельность
     ?assertNot(oa_set:member(1, S0)).
 
 delete_test() ->
