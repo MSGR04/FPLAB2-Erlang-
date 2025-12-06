@@ -1,6 +1,3 @@
-%%%-------------------------------------------------------------------
-%%% oa_set: immutable open-addressing set
-%%%-------------------------------------------------------------------
 -module(oa_set).
 
 -compile({no_auto_import, [size/1]}).
@@ -87,7 +84,6 @@ foldl(Fun, Acc0, #oa_set{capacity = Cap, buckets = Buckets}) ->
     fold_buckets_left(Fun, Acc0, Buckets, Cap, 0).
 
 foldr(Fun, Acc0, Set) ->
-    %% Правую свёртку сделаем через списковое представление
     List = to_list(Set),
     lists:foldr(Fun, Acc0, List).
 
@@ -103,7 +99,6 @@ filter(Pred, Set) ->
       Set).
 
 map(Fun, Set) ->
-    %% результат тоже множество – возможны коллизии по значению
     foldl(
       fun(X, Acc) ->
           insert(Fun(X), Acc)
@@ -111,21 +106,8 @@ map(Fun, Set) ->
       new(),
       Set).
 
-%%--------------------------------------------------------------------
-%% Моноид (по операции объединения)
-%%--------------------------------------------------------------------
-
 union(A, B) ->
-    %% можно и наоборот – вставлять меньший в больший
     foldl(fun insert/2, B, A).
-
-%% пустое множество – нейтральный элемент
-%%   union(empty(), S) == S
-%%   union(S, empty()) == S
-
-%%--------------------------------------------------------------------
-%% Сравнение множеств (эффективно, без сортировки списков)
-%%--------------------------------------------------------------------
 
 equal(A, B) ->
     case {size(A), size(B)} of
@@ -134,7 +116,6 @@ equal(A, B) ->
         {0, 0} ->
             true;
         {SA, SB} ->
-            %% Идём по меньшему множеству и проверяем member в другом
             case SA =< SB of
                 true  -> subset_via_fold(A, B);
                 false -> subset_via_fold(B, A)
@@ -149,9 +130,6 @@ subset_via_fold(Small, Big) ->
       true,
       Small).
 
-%%--------------------------------------------------------------------
-%% Вспомогательные функции
-%%--------------------------------------------------------------------
 
 empty_tuple(N) ->
     list_to_tuple(lists:duplicate(N, empty)).
@@ -159,9 +137,7 @@ empty_tuple(N) ->
 hash(X) ->
     erlang:phash2(X).
 
-%% Увеличение таблицы при достижении load factor (примерно 0.7)
 ensure_capacity(Set = #oa_set{size = Size, capacity = Cap}) ->
-    %% Size / Cap >= 0.7  <=>  Size * 10 >= 7 * Cap
     case Size * 10 >= 7 * Cap of
         true  -> resize(Set);
         false -> Set
@@ -170,11 +146,9 @@ ensure_capacity(Set = #oa_set{size = Size, capacity = Cap}) ->
 resize(Set = #oa_set{capacity = OldCap}) ->
     NewCap = OldCap bsl 1,
     Empty  = empty_tuple(NewCap),
-    %% Перевставляем все элементы
     NewSet0 = #oa_set{size = 0, capacity = NewCap, buckets = Empty},
     foldl(fun insert_no_resize/2, NewSet0, Set).
 
-%% Вставка без проверки и без изменения capacity (используется в resize/1)
 insert_no_resize(X, Set = #oa_set{capacity = Cap, buckets = Buckets, size = Size}) ->
     H = hash(X),
     case find_slot_for_insert(X, H, Buckets, Cap, 0, none) of
@@ -187,12 +161,9 @@ insert_no_resize(X, Set = #oa_set{capacity = Cap, buckets = Buckets, size = Size
     end.
 
 %% Поиск слота для вставки:
-%%   - если нашли такой же элемент -> {found, Pos}
-%%   - если нашли пустой/надгробие -> {free, Pos}
 find_slot_for_insert(X, H, Buckets, Cap, Step, TombstonePos) when Step >= Cap ->
-    %% таблица полна – теоретически не должно случаться из-за ensure_capacity/1
     case TombstonePos of
-        none -> {free, (H band (Cap - 1))}; % fallback
+        none -> {free, (H band (Cap - 1))};
         Pos  -> {free, Pos}
     end;
 find_slot_for_insert(X, H, Buckets, Cap, Step, TombstonePos) ->
@@ -226,7 +197,7 @@ probe_member(X, H, Buckets, Cap, Step) ->
     Cell = element(Pos + 1, Buckets),
     case Cell of
         empty ->
-            false;            % дальше можно не искать
+            false;           
         tombstone ->
             probe_member(X, H, Buckets, Cap, Step + 1);
         {Y, H2} ->
@@ -266,6 +237,5 @@ fold_buckets_left(Fun, Acc0, Buckets, Cap, Pos) ->
         end,
     fold_buckets_left(Fun, Acc1, Buckets, Cap, Pos + 1).
 
-%% Внутренний to_list/1 – только для удобства реализации foldr/3 и resize/1
 to_list(Set) ->
     foldl(fun(X, Acc) -> [X | Acc] end, [], Set).

@@ -2,6 +2,10 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> add2d8b (Save local change)
 new_is_empty_test() ->
     S = oa_set:new(),
     ?assert(oa_set:is_empty(S)),
