@@ -1,0 +1,51 @@
+name: Erlang CI
+
+on:
+  push:
+    branches: [ "master" ] 
+  pull_request:
+    branches: [ "master" ]   
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Erlang
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "25.3"
+          rebar3-version: "3.18.0"
+
+      - name: Format code
+        run: rebar3 format
+
+      - name: Dialyze
+        run: rebar3 dialyzer
+
+      - name: Compile project
+        run: rebar3 compile
+
+  tests:
+    runs-on: ubuntu-latest
+    needs: compile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Erlang
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "25.3"
+          rebar3-version: "3.18.0"
+
+      - name: Run EUnit tests
+        run: rebar3 eunit
+
+      - name: Run Property tests
+        run: rebar3 proper -m oa_set_props
